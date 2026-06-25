@@ -18,7 +18,7 @@ router.get(
     res.cookie("token", token, {
       httpOnly: true,
       secure: true, // Change to true in production with HTTPS
-      sameSite: none,
+      sameSite: "none",
       maxAge: 24 * 60 * 60 * 1000, // 24 hours
     });
     console.log("Google authentication successful, user:", req.user);
