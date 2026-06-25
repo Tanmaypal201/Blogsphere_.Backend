@@ -36,16 +36,30 @@ const { CommentArticle, likeArticle } = require("./controller/comment&likeart");
 const { followUser } = require("./controller/follow");
 const Article = require("./models/articles");
 const http = require("http");
-const { initializeSocket } = require("./socket");
 
-//Socket.io Setup!!!
+// Socket.io: only initialize when running as a regular Node server (not Vercel serverless)
 const server = http.createServer(app);
-initializeSocket(server);
+try {
+  const { initializeSocket } = require("./socket");
+  initializeSocket(server);
+} catch (e) {
+  console.warn("Socket.io initialization skipped:", e.message);
+}
 
 //Middleware
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL,
+    origin: (origin, callback) => {
+      const allowed = [
+        process.env.FRONTEND_URL?.replace(/\/$/, ""),
+        "http://localhost:3000",
+      ].filter(Boolean);
+      if (!origin || allowed.includes(origin.replace(/\/$/, ""))) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
     allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true,
   }),
@@ -54,6 +68,27 @@ app.use(express.json());
 app.use(cookieParser());
 app.use(express.urlencoded({ extended: true }));
 app.use(passport.initialize());
+
+// Lazy DB connection — reused across serverless invocations
+let dbConnected = false;
+async function ensureDB() {
+  if (!dbConnected) {
+    await connectDB(process.env.MONGODB_URI);
+    dbConnected = true;
+    console.log("Connected to database");
+  }
+}
+
+// Ensure DB is connected before any route runs
+app.use(async (req, res, next) => {
+  try {
+    await ensureDB();
+    next();
+  } catch (err) {
+    console.error("DB connection error:", err);
+    res.status(500).json({ error: "Database connection failed" });
+  }
+});
 
 // Serve static files from uploads directory
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
@@ -413,15 +448,22 @@ app.post("/logout", checkauthentication, async (req, res) => {
   return res.status(200).json({ message: "Logout successful" });
 });
 
-//connect to database and then start server
-connectDB(process.env.MONGODB_URI)
-  .then(() => {
-    console.log("Connected to database");
-    server.listen(PORT, () => {
-      console.log(`Server with socket is running on port ${PORT}`);
+
+
+
+// Export app for Vercel serverless; also support direct node execution
+if (require.main === module) {
+  connectDB(process.env.MONGODB_URI)
+    .then(() => {
+      console.log("Connected to database");
+      server.listen(PORT, () => {
+        console.log(`Server with socket is running on port ${PORT}`);
+      });
+    })
+    .catch((err) => {
+      console.log(err);
+      process.exit(1);
     });
-  })
-  .catch((err) => {
-    console.log(err);
-    process.exit(1);
-  });
+}
+
+module.exports = app;
