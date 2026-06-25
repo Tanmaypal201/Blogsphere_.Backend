@@ -60,8 +60,8 @@ const loginController = async (req, res) => {
   const token = setuser(user);
   res.cookie("token", token, {
     httpOnly: true,
-    secure: false, // Change to true in production with HTTPS
-    sameSite: "lax",
+    secure: true, // Change to true in production with HTTPS
+    sameSite: "none",
     maxAge: 24 * 60 * 60 * 1000, // 24 hours
   });
   return res
@@ -94,8 +94,8 @@ const verifyController = async (req, res) => {
   const token = setuser(user);
   res.cookie("token", token, {
     httpOnly: true,
-    secure: false,
-    sameSite: "lax",
+    secure: true,
+    sameSite: "none",
     maxAge: 24 * 60 * 60 * 1000,
   });
   await User.syncIndexes();
