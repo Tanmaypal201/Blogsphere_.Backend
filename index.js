@@ -46,13 +46,11 @@ try {
   console.warn("Socket.io initialization skipped:", e.message);
 }
 
-//Middleware
 app.use(
   cors({
     origin: (origin, callback) => {
       const allowed = [
-        process.env.FRONTEND_URL?.replace(/\/$/, ""),
-        "http://localhost:3000",
+        process.env.FRONTEND_URL
       ].filter(Boolean);
       if (!origin || allowed.includes(origin.replace(/\/$/, ""))) {
         callback(null, true);
@@ -69,7 +67,6 @@ app.use(cookieParser());
 app.use(express.urlencoded({ extended: true }));
 app.use(passport.initialize());
 
-// Lazy DB connection — reused across serverless invocations
 let dbConnected = false;
 async function ensureDB() {
   if (!dbConnected) {
@@ -79,7 +76,6 @@ async function ensureDB() {
   }
 }
 
-// Ensure DB is connected before any route runs
 app.use(async (req, res, next) => {
   try {
     await ensureDB();
@@ -448,10 +444,6 @@ app.post("/logout", checkauthentication, async (req, res) => {
   return res.status(200).json({ message: "Logout successful" });
 });
 
-
-
-
-// Export app for Vercel serverless; also support direct node execution
 if (require.main === module) {
   connectDB(process.env.MONGODB_URI)
     .then(() => {
