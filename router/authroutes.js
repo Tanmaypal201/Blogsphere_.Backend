@@ -12,7 +12,7 @@ router.get(
 
 router.get(
   "/google/callback",
-  password.authenticate("google", { failureRedirect: "/login" , session: false }),
+  password.authenticate("google", { failureRedirect: "/login", session: false }),
   (req, res) => {
     const token = setuser(req.user);
     res.cookie("token", token, {
@@ -22,7 +22,7 @@ router.get(
       maxAge: 24 * 60 * 60 * 1000, // 24 hours
     });
     console.log("Google authentication successful, user:", req.user);
-    return res.redirect("http://localhost:3000/home");
+    return res.redirect(process.env.FRONTEND_URL);
   },
 );
 
