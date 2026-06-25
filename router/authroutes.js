@@ -17,7 +17,7 @@ router.get(
     const token = setuser(req.user);
     res.cookie("token", token, {
       httpOnly: true,
-      secure: false, // Change to true in production with HTTPS
+      secure: true, // Change to true in production with HTTPS
       sameSite: "lax",
       maxAge: 24 * 60 * 60 * 1000, // 24 hours
     });
