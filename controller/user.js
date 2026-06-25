@@ -1,5 +1,4 @@
 const User = require("../models/user");
-const UserProfile = require("../models/userprofile");
 const bcrypt = require("bcrypt");
 const { sendVerify } = require("../middleware/email");
 const { setuser } = require("../server/auth");

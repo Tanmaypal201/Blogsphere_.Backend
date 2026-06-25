@@ -2,7 +2,7 @@ require("dotenv").config();
 const express = require("express");
 const app = express();
 const cors = require("cors");
-const PORT = 3001;
+const PORT = process.env.PORT || 3001;
 const { connectDB } = require("./connection");
 const authRoutes = require("./router/authroutes");
 const audioRoutes = require("./router/audioroutes");
@@ -45,7 +45,7 @@ initializeSocket(server);
 //Middleware
 app.use(
   cors({
-    origin: "http://localhost:3000",
+    origin: process.env.FRONTEND_URL,
     allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true,
   }),
@@ -414,7 +414,7 @@ app.post("/logout", checkauthentication, async (req, res) => {
 });
 
 //connect to database and then start server
-connectDB("mongodb://localhost:27017/blogging-app")
+connectDB(process.env.MONGODB_URI)
   .then(() => {
     console.log("Connected to database");
     server.listen(PORT, () => {

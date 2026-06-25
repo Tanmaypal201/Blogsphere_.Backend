@@ -1,19 +1,15 @@
-const Message = require("../models/Message");
+const Message = require("./models/message");
 
 const uploadFileInMessageController = async (req, res) => {
   try {
-
     if (!req.file) {
       return res.status(400).json({
         success: false,
         message: "No file uploaded"
       });
     }
-
     const { senderId, receiverId } = req.body;
-
     let type;
-
     if (req.file.mimetype.startsWith("image/")) {
       type = "image";
     } else if (req.file.mimetype.startsWith("video/")) {
@@ -21,7 +17,6 @@ const uploadFileInMessageController = async (req, res) => {
     } else {
       type = "document";
     }
-
     const newMessage = await Message.create({
       sender: {
         userId: senderId
