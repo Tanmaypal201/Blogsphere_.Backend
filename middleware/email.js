@@ -10,7 +10,6 @@ const sendVerify = async (email, verificationCode) => {
       html: `<b>Your verification code is ${verificationCode}</b>`,
     });
 
-    console.log("Message sent:", info);
   } catch (err) {
     console.log(err);
   }

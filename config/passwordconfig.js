@@ -9,7 +9,7 @@ passport.use(
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
       callbackURL:
         process.env.GOOGLE_CALLBACK_URL ||
-        "http://localhost:3001/auth/google/callback",
+        "https://blogsphere-backend-m2vy.onrender.com/auth/google/callback",
     },
     async (accessToken, refreshToken, profile, done) => {
       try {
