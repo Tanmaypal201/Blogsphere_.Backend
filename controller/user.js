@@ -1,7 +1,7 @@
 const User = require("../models/user");
 const bcrypt = require("bcrypt");
 const { sendVerify } = require("../middleware/email");
-const { setuser } = require("../server/auth");
+const { setuser } = require("../service/auth");
 
 const userController = async (req, res) => {
   const body = req.body;
@@ -112,7 +112,6 @@ const loginwithgooleController = async (profile) => {
   const name = profile.displayName;
   const googleId = profile.id;
   const profilePicture = profile.photos?.[0]?.value || null;
-
   console.log(profilePicture);
 
   const buildGoogleUsername = async () => {
@@ -124,13 +123,10 @@ const loginwithgooleController = async (profile) => {
     const base = rawBase || "user";
     let candidate = base;
     let counter = 1;
-
-    // Ensure generated username is unique for new Google users.
     while (await User.findOne({ username: candidate })) {
       candidate = `${base}${counter}`;
       counter += 1;
     }
-
     return candidate;
   };
 
@@ -150,6 +146,7 @@ const loginwithgooleController = async (profile) => {
       await user.save();
     }
   }
+
   return user;
 };
 module.exports = { userController, loginController, verifyController, loginwithgooleController };

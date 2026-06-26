@@ -4,8 +4,10 @@ const app = express();
 const cors = require("cors");
 const PORT = process.env.PORT || 3001;
 const { connectDB } = require("./connection");
+const cloudinary = require("cloudinary").v2;
 const authRoutes = require("./router/authroutes");
 const audioRoutes = require("./router/audioroutes");
+const uploadmsgroutes = require("./router/uploadmsgroutes");
 const Message = require("./models/message");
 const passport = require("./config/passwordconfig");
 const { getTrendingPosts, getPopularTags, getTopAuthors } = require("./controller/gettrendings");
@@ -46,27 +48,21 @@ try {
   console.warn("Socket.io initialization skipped:", e.message);
 }
 
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      const allowed = [
-        process.env.FRONTEND_URL
-      ].filter(Boolean);
-      if (!origin || allowed.includes(origin.replace(/\/$/, ""))) {
-        callback(null, true);
-      } else {
-        callback(new Error("Not allowed by CORS"));
-      }
-    },
-    allowedHeaders: ["Content-Type", "Authorization"],
-    credentials: true,
-  }),
-);
+app.use(cors({
+  origin: process.env.FRONTEND_URL,
+  credentials: true
+}));
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
 app.use(express.json());
 app.use(cookieParser());
 app.use(express.urlencoded({ extended: true }));
 app.use(passport.initialize());
-
 let dbConnected = false;
 async function ensureDB() {
   if (!dbConnected) {
@@ -75,7 +71,6 @@ async function ensureDB() {
     console.log("Connected to database");
   }
 }
-
 app.use(async (req, res, next) => {
   try {
     await ensureDB();
@@ -88,9 +83,9 @@ app.use(async (req, res, next) => {
 
 // Serve static files from uploads directory
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
-app.use("/uploads", express.static("uploads"));
 app.use("/uploads", audioRoutes.router);
 app.use("/auth", authRoutes);
+app.use("/uploadMessage", uploadmsgroutes.router);
 app.post("/signup", userController);
 app.post("/login", loginController);
 app.post("/verify", verifyController);
@@ -110,7 +105,8 @@ app.get("/profileget", checkauthentication, async (req, res) => {
   );
   res.json({ user });
 });
-app.get("/download/:filename", (req, res) => {
+
+app.get("/download/:filename", checkauthentication, (req, res) => {
   const fileName = req.params.filename;
   const originalName = req.query.name || fileName;
   const filePath = path.join(__dirname, "uploads", fileName);
@@ -127,68 +123,12 @@ app.get("/download/:filename", (req, res) => {
     }
   });
 });
+
 app.post("/setprofile", checkauthentication, uploadProfilePicture, setprofile);
 app.post("/createpost", checkauthentication, uploadPostImage, createPost);
 app.post("/setsettings", checkauthentication, setsettings);
 app.post("/savepost", checkauthentication, savepost);
-app.post("/uploadimageinmessage", checkauthentication, uploadImageinmessage, (req, res) => {
-  if (!req.file) {
-    return res.status(400).json({ message: "No image file uploaded" });
-  }
 
-  const normalizedPath = String(req.file.path || "").replace(/\\/g, "/");
-  const relativeUploadPath = normalizedPath.includes("uploads/")
-    ? normalizedPath.slice(normalizedPath.indexOf("uploads/"))
-    : normalizedPath;
-  const fileUrl = `/${relativeUploadPath.replace(/^\/+/, "")}`;
-
-  return res.status(200).json({
-    message: "Image uploaded successfully",
-    fileUrl,
-    type: "image",
-    fileName: req.file.originalname,
-    fileSize: req.file.size,
-  });
-});
-app.post("/uploadvideoinmessage", checkauthentication, uploadVideoInMessage, (req, res) => {
-  if (!req.file) {
-    return res.status(400).json({ message: "No video file uploaded" });
-  }
-
-  const normalizedPath = String(req.file.path || "").replace(/\\/g, "/");
-  const relativeUploadPath = normalizedPath.includes("uploads/")
-    ? normalizedPath.slice(normalizedPath.indexOf("uploads/"))
-    : normalizedPath;
-  const fileUrl = `/${relativeUploadPath.replace(/^\/+/, "")}`;
-
-  return res.status(200).json({
-    message: "Video uploaded successfully",
-    fileUrl,
-    type: "video",
-    fileName: req.file.originalname,
-    fileSize: req.file.size,
-  });
-});
-
-app.post("/uploaddocumentinmessage", checkauthentication, uploadDocumentInMessage, (req, res) => {
-  if (!req.file) {
-    return res.status(400).json({ message: "No document file uploaded" });
-  }
-
-  const normalizedPath = String(req.file.path || "").replace(/\\/g, "/");
-  const relativeUploadPath = normalizedPath.includes("uploads/")
-    ? normalizedPath.slice(normalizedPath.indexOf("uploads/"))
-    : normalizedPath;
-  const fileUrl = `/${relativeUploadPath.replace(/^\/+/, "")}`;
-
-  return res.status(200).json({
-    message: "Document uploaded successfully",
-    fileUrl,
-    type: "document",
-    fileName: req.file.originalname,
-    fileSize: req.file.size,
-  });
-});
 app.get("/getposts", checkauthentication, async (req, res) => {
   try {
     const posts = await UploadPost.find({ username: req.user.username }).sort({
@@ -330,8 +270,6 @@ app.get("/getallposts", checkauthentication, async (req, res) => {
     const posts = await UploadPost.find({ status: "published" }).sort({
       createdAt: -1,
     });
-
-    // Fetch profile pictures for each post's author
     const postsWithProfiles = await Promise.all(
       posts.map(async (post) => {
         const userProfile = await UserProfile.findOne({
@@ -428,9 +366,7 @@ app.get("/messages/:userId", checkauthentication, async (req, res) => {
     res.status(500).json({ error: "Server error" });
   }
 });
-
 app.get("/getupdates", checkauthentication, getUpdates);
-
 app.post("/commentpost", checkauthentication, CommentPost);
 app.post("/likepost", checkauthentication, likePost);
 app.post("/followuser", checkauthentication, followUser);
@@ -438,8 +374,10 @@ app.post("/commentarticle", checkauthentication, CommentArticle);
 app.post("/likearticle", checkauthentication, likeArticle);
 app.post("/deletepost", checkauthentication, deletePost);
 app.post("/updatepost", checkauthentication, uploadPostImage, updatePost);
+
 app.post("/logout", checkauthentication, async (req, res) => {
-  res.clearCookie("token", { httpOnly: true, secure: true, sameSite: "None" });
+  res.clearCookie("token",
+    { httpOnly: true, secure: true, sameSite: "None" });
   console.log(`User ${req.user.username} logged out`);
   return res.status(200).json({ message: "Logout successful" });
 });

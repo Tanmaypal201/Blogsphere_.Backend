@@ -1,4 +1,4 @@
-const { getuser } = require('../server/auth');
+const { getuser } = require('../service/auth');
 
 const checkauthentication = (req, res, next) => {
     const token = req.cookies.token;

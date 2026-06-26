@@ -1,14 +1,16 @@
 const UploadPost = require("../models/uploadpost");
 const Update = require("../models/updates"); // Correct: updates.js (plural)
+const { uploadonCloudnary } = require("../service/cloudnary");
 
 const createPost = async (req, res) => {
   try {
     const { title, content, status, category, tags } = req.body;
     const userId = req.user._id;
-
-    console.log("Create post attempt:", req.body);
-    const imageUrl = req.file ? `/uploads/${req.file.filename}` : "";
-
+    const uploadresult = await uploadonCloudnary(req.file.path);
+    if (!uploadresult) {
+      return res.status(500).json({ error: "Failed to upload image to Cloudinary" });
+    }
+    const imageUrl = uploadresult.url;
     let parsedTags = [];
     if (tags) {
       if (Array.isArray(tags)) {
@@ -161,17 +163,7 @@ const savepost = async (req, res) => {
       });
     }
     await post.save();
-
-    const UserProfile = require("../models/userprofile");
-    const authorProfile = await UserProfile.findOne({ username: post.username });
-
-    res.status(200).json({
-      message: "Succesfully Done !!",
-      post: {
-        ...post.toObject(),
-        profilePicture: authorProfile?.profilePicture || null,
-      }
-    });
+    res.status(200).json({ message: "Succesfully Done !!", post });
   } catch (err) {
     console.log(err);
     res.status(500).json({ error: "Server error" });

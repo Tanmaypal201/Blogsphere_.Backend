@@ -9,6 +9,7 @@ const uploadFileInMessageController = async (req, res) => {
       });
     }
     const { senderId, receiverId } = req.body;
+
     let type;
     if (req.file.mimetype.startsWith("image/")) {
       type = "image";
@@ -17,6 +18,12 @@ const uploadFileInMessageController = async (req, res) => {
     } else {
       type = "document";
     }
+
+    const result = await cloudinary.uploader.upload(req.file.path, {
+      folder: "chat_files",
+      resource_type: type === "image" ? "image" : type === "video" ? "video" : "raw",
+    });
+
     const newMessage = await Message.create({
       sender: {
         userId: senderId
@@ -30,9 +37,12 @@ const uploadFileInMessageController = async (req, res) => {
       status: "sent"
     });
 
-    res.status(200).json({
-      success: true,
-      message: newMessage
+    return res.status(200).json({
+      message: "File uploaded successfully",
+      fileUrl: result.url,
+      type: type,
+      fileName: req.file.originalname,
+      fileSize: req.file.size,
     });
 
   } catch (error) {
