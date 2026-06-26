@@ -15,12 +15,14 @@ router.get(
   password.authenticate("google", { failureRedirect: "/login", session: false }),
   (req, res) => {
     const token = setuser(req.user);
+
     res.cookie("token", token, {
       httpOnly: true,
-      secure: true, // Change to true in production with HTTPS
+      secure: true,
       sameSite: "none",
-      maxAge: 24 * 60 * 60 * 1000, // 24 hours
+      maxAge: 24 * 60 * 60 * 1000,
     });
+    console.log("Token", token);
     console.log("Google authentication successful, user:", req.user);
     return res.redirect(process.env.FRONTEND_URL);
   },
