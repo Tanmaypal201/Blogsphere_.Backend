@@ -1,4 +1,5 @@
-const Message = require("./models/message");
+const Message = require("../models/message");
+const { uploadonCloudnary } = require("../service/cloudnary");
 
 const uploadFileInMessageController = async (req, res) => {
   try {
@@ -8,6 +9,7 @@ const uploadFileInMessageController = async (req, res) => {
         message: "No file uploaded"
       });
     }
+
     const { senderId, receiverId } = req.body;
 
     let type;
@@ -19,7 +21,7 @@ const uploadFileInMessageController = async (req, res) => {
       type = "document";
     }
 
-    const result = await cloudinary.uploader.upload(req.file.path, {
+    const uploadresult = await uploadonCloudnary(req.file.path, {
       folder: "chat_files",
       resource_type: type === "image" ? "image" : type === "video" ? "video" : "raw",
     });
@@ -33,13 +35,13 @@ const uploadFileInMessageController = async (req, res) => {
       },
       type,
       fileName: req.file.originalname,
-      filePath: req.file.path,
+      filePath: uploadresult.secure_url,
       status: "sent"
     });
 
     return res.status(200).json({
       message: "File uploaded successfully",
-      fileUrl: result.url,
+      fileUrl: uploadresult.secure_url,
       type: type,
       fileName: req.file.originalname,
       fileSize: req.file.size,
