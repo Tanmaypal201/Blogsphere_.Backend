@@ -41,7 +41,10 @@ const getTrendingPosts = async (req, res) => {
         console.log(trendingPosts);
         const enrichedPosts = trendingPosts.map(post => {
             const rawImg = post.imageUrl;
-            const imgUrlStr = rawImg && typeof rawImg === 'object' ? rawImg.url : rawImg;
+            let imgUrlStr = rawImg && typeof rawImg === 'object' ? rawImg.url : rawImg;
+            if (imgUrlStr && (imgUrlStr.startsWith("http://") || imgUrlStr.startsWith("https://"))) {
+                imgUrlStr = `/uploads/${imgUrlStr}`;
+            }
             return {
                 ...post,
                 imageUrl: imgUrlStr || ""

@@ -100,8 +100,16 @@ messageSchema.set("toJSON", {
   virtuals: true,
   getters: true,
   transform: (doc, ret) => {
-    if (ret.fileUrl && typeof ret.fileUrl === 'object' && ret.fileUrl.url) {
-      ret.fileUrl = ret.fileUrl.url;
+    if (ret.fileUrl) {
+      const url = typeof ret.fileUrl === "object" ? ret.fileUrl.url : ret.fileUrl;
+      if (url && (url.startsWith("http://") || url.startsWith("https://"))) {
+        ret.fileUrl = `/uploads/${url}`;
+      } else {
+        ret.fileUrl = url;
+      }
+    }
+    if (ret.content && (ret.content.startsWith("http://") || ret.content.startsWith("https://"))) {
+      ret.content = `/uploads/${ret.content}`;
     }
     return ret;
   }
@@ -111,8 +119,16 @@ messageSchema.set("toObject", {
   virtuals: true,
   getters: true,
   transform: (doc, ret) => {
-    if (ret.fileUrl && typeof ret.fileUrl === 'object' && ret.fileUrl.url) {
-      ret.fileUrl = ret.fileUrl.url;
+    if (ret.fileUrl) {
+      const url = typeof ret.fileUrl === "object" ? ret.fileUrl.url : ret.fileUrl;
+      if (url && (url.startsWith("http://") || url.startsWith("https://"))) {
+        ret.fileUrl = `/uploads/${url}`;
+      } else {
+        ret.fileUrl = url;
+      }
+    }
+    if (ret.content && (ret.content.startsWith("http://") || ret.content.startsWith("https://"))) {
+      ret.content = `/uploads/${ret.content}`;
     }
     return ret;
   }

@@ -38,8 +38,13 @@ userProfileSchema.set("toJSON", {
   virtuals: true,
   getters: true,
   transform: (doc, ret) => {
-    if (ret.profilePicture && typeof ret.profilePicture === 'object' && ret.profilePicture.url) {
-      ret.profilePicture = ret.profilePicture.url;
+    if (ret.profilePicture) {
+      const url = typeof ret.profilePicture === "object" ? ret.profilePicture.url : ret.profilePicture;
+      if (url && (url.startsWith("http://") || url.startsWith("https://"))) {
+        ret.profilePicture = `/uploads/${url}`;
+      } else {
+        ret.profilePicture = url;
+      }
     }
     return ret;
   }
@@ -49,8 +54,13 @@ userProfileSchema.set("toObject", {
   virtuals: true,
   getters: true,
   transform: (doc, ret) => {
-    if (ret.profilePicture && typeof ret.profilePicture === 'object' && ret.profilePicture.url) {
-      ret.profilePicture = ret.profilePicture.url;
+    if (ret.profilePicture) {
+      const url = typeof ret.profilePicture === "object" ? ret.profilePicture.url : ret.profilePicture;
+      if (url && (url.startsWith("http://") || url.startsWith("https://"))) {
+        ret.profilePicture = `/uploads/${url}`;
+      } else {
+        ret.profilePicture = url;
+      }
     }
     return ret;
   }

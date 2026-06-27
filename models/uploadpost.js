@@ -83,8 +83,13 @@ uploadpostSchema.set("toJSON", {
   virtuals: true,
   getters: true,
   transform: (doc, ret) => {
-    if (ret.imageUrl && typeof ret.imageUrl === 'object' && ret.imageUrl.url) {
-      ret.imageUrl = ret.imageUrl.url;
+    if (ret.imageUrl) {
+      const url = typeof ret.imageUrl === "object" ? ret.imageUrl.url : ret.imageUrl;
+      if (url && (url.startsWith("http://") || url.startsWith("https://"))) {
+        ret.imageUrl = `/uploads/${url}`;
+      } else {
+        ret.imageUrl = url;
+      }
     }
     return ret;
   }
@@ -94,8 +99,13 @@ uploadpostSchema.set("toObject", {
   virtuals: true,
   getters: true,
   transform: (doc, ret) => {
-    if (ret.imageUrl && typeof ret.imageUrl === 'object' && ret.imageUrl.url) {
-      ret.imageUrl = ret.imageUrl.url;
+    if (ret.imageUrl) {
+      const url = typeof ret.imageUrl === "object" ? ret.imageUrl.url : ret.imageUrl;
+      if (url && (url.startsWith("http://") || url.startsWith("https://"))) {
+        ret.imageUrl = `/uploads/${url}`;
+      } else {
+        ret.imageUrl = url;
+      }
     }
     return ret;
   }

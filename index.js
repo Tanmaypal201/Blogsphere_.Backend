@@ -81,6 +81,18 @@ app.use(async (req, res, next) => {
   }
 });
 
+// Redirect /uploads/https:/... or /uploads/http:/... to the actual Cloudinary URL
+app.use((req, res, next) => {
+  const match = req.path.match(/^\/uploads\/(https?):\/+(.*)/);
+  if (match) {
+    const protocol = match[1];
+    const rest = match[2];
+    const targetUrl = `${protocol}://${rest}`;
+    return res.redirect(targetUrl);
+  }
+  next();
+});
+
 // Serve static files from uploads directory
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 app.use("/uploads", audioRoutes.router);
