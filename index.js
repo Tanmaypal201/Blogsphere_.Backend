@@ -223,10 +223,12 @@ app.get("/download/:filename", checkauthentication, async (req, res, next) => {
 const getFileUrl = (field) => {
   if (!field) return "";
   const url = typeof field === "object" ? field.url : field;
+  // If already an absolute URL, return it directly
   if (url && (url.startsWith("http://") || url.startsWith("https://"))) {
-    return `/uploads/${url}`;
+    return url;
   }
-  return url || "";
+  // Otherwise, assume it's a relative path stored in uploads directory
+  return url ? `/uploads/${url}` : "";
 };
 
 app.post("/setprofile", checkauthentication, uploadProfilePicture, setprofile);
