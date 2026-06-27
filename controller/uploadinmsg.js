@@ -34,7 +34,16 @@ const uploadFileInMessageController = async (req, res) => {
       resource_type: resourceType,
     });
 
+    // Delete the temporary local file regardless of upload success
+    const fs = require('fs');
+    try {
+      fs.unlinkSync(req.file.path);
+    } catch (unlinkErr) {
+      console.error('Failed to delete temporary file:', unlinkErr);
+    }
+
     if (!uploadResult) {
+      // Ensure temp file is deleted if upload failed (already attempted above)
       return res.status(500).json({
         success: false,
         message: "Failed to upload file to Cloudinary",
