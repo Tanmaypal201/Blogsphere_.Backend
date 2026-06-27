@@ -39,7 +39,15 @@ const getTrendingPosts = async (req, res) => {
         ]);
 
         console.log(trendingPosts);
-        res.status(200).json(trendingPosts);
+        const enrichedPosts = trendingPosts.map(post => {
+            const rawImg = post.imageUrl;
+            const imgUrlStr = rawImg && typeof rawImg === 'object' ? rawImg.url : rawImg;
+            return {
+                ...post,
+                imageUrl: imgUrlStr || ""
+            };
+        });
+        res.status(200).json(enrichedPosts);
     }
     catch (err) {
         res.status(500).json({ message: "Server error" });

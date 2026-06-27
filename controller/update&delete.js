@@ -1,5 +1,6 @@
 const Uploadpost = require("../models/uploadpost");
 const Update = require("../models/updates"); // Correct: updates.js (plural)
+const { uploadToCloudinary, deleteFromCloudinary } = require("../service/cloudnary");
 
 const deletePost = async (req, res) => {
   const { postId } = req.body;
@@ -9,6 +10,16 @@ const deletePost = async (req, res) => {
     if (!post) {
       return res.status(404).json({ error: "Post not found" });
     }
+
+    // Delete image from Cloudinary if it exists
+    if (post.imageUrl && post.imageUrl.publicId) {
+      try {
+        await deleteFromCloudinary(post.imageUrl.publicId, post.imageUrl.resourceType || "image");
+      } catch (deleteErr) {
+        console.error("Failed to delete post image from Cloudinary on delete:", deleteErr);
+      }
+    }
+
     await Uploadpost.findByIdAndDelete(postId);
 
     const update = new Update({
@@ -27,7 +38,27 @@ const deletePost = async (req, res) => {
 
 const updatePost = async (req, res) => {
   const { postId, title, content, status, tags, category } = req.body;
-  const imageUrl = req.file ? `/uploads/${req.file.filename}` : "";
+  
+  let newImageUrl = null;
+  if (req.file) {
+    try {
+      const uploadResult = await uploadToCloudinary(req.file.path, {
+        folder: "blogsphere/post-images",
+      });
+      newImageUrl = {
+        url: uploadResult.url,
+        publicId: uploadResult.publicId,
+        fileName: req.file.originalname,
+        fileSize: req.file.size,
+        mimeType: req.file.mimetype,
+        resourceType: uploadResult.resourceType,
+      };
+    } catch (uploadErr) {
+      console.error("Failed to upload new post image to Cloudinary:", uploadErr);
+      return res.status(500).json({ error: "Failed to upload image to Cloudinary" });
+    }
+  }
+
   console.log("Update attempt on post:", postId, "by user:", req.user.username);
 
   try {
@@ -59,7 +90,17 @@ const updatePost = async (req, res) => {
       category: category !== undefined ? category : post.category,
       tags: parsedTags
     };
-    if (imageUrl) updateData.imageUrl = imageUrl;
+    if (newImageUrl) {
+      // Delete old post image from Cloudinary if it exists
+      if (post.imageUrl && post.imageUrl.publicId) {
+        try {
+          await deleteFromCloudinary(post.imageUrl.publicId, post.imageUrl.resourceType || "image");
+        } catch (deleteErr) {
+          console.error("Failed to delete old post image from Cloudinary:", deleteErr);
+        }
+      }
+      updateData.imageUrl = newImageUrl;
+    }
 
     if (status === "draft") {
       updateData.likes = [];

@@ -1,6 +1,7 @@
 const { Server } = require("socket.io");
 const Message = require("./models/message");
 const User = require("./models/user");
+const { parseCloudinaryUrl, deleteFromCloudinary } = require("./service/cloudnary");
 
 let onlineUsers = new Map();
 
@@ -480,6 +481,23 @@ const initializeSocket = (server) => {
         return;
       }
 
+      const parsed = parseCloudinaryUrl(normalizedFileUrl);
+      const fileUrlMetadata = parsed ? {
+        url: normalizedFileUrl,
+        publicId: parsed.publicId,
+        fileName: normalizedFileName || "File",
+        fileSize: normalizedFileSize,
+        mimeType: normalizedType === "image" ? "image/jpeg" : normalizedType === "video" ? "video/mp4" : "application/octet-stream",
+        resourceType: parsed.resourceType
+      } : {
+        url: normalizedFileUrl,
+        publicId: "unknown",
+        fileName: normalizedFileName || "File",
+        fileSize: normalizedFileSize,
+        mimeType: "application/octet-stream",
+        resourceType: normalizedType === "image" ? "image" : normalizedType === "video" ? "video" : "raw"
+      };
+
       const newMessage = new Message({
         sender: {
           userId: senderUser._id,
@@ -491,7 +509,7 @@ const initializeSocket = (server) => {
         },
         content: normalizedCaption || normalizedFileName || "Sent a file",
         type: normalizedType,
-        fileUrl: normalizedFileUrl,
+        fileUrl: fileUrlMetadata,
         fileName: normalizedFileName,
         fileSize: Number.isFinite(normalizedFileSize) ? normalizedFileSize : 0,
       });
@@ -664,6 +682,19 @@ const initializeSocket = (server) => {
       if (message.sender.userId.toString() !== targetSenderId) {
         return;
       }
+
+      // Delete associated file from Cloudinary if it exists
+      if (message.fileUrl && message.fileUrl.publicId) {
+        try {
+          await deleteFromCloudinary(
+            message.fileUrl.publicId,
+            message.fileUrl.resourceType || "image"
+          );
+        } catch (cloudinaryErr) {
+          console.error("Failed to delete file from Cloudinary on deleteMessage socket event:", cloudinaryErr);
+        }
+      }
+
       await Message.findByIdAndDelete(messageId);
       const receiverSockets = onlineUsers.get(
         message.receiver.userId.toString(),
@@ -780,6 +811,23 @@ const initializeSocket = (server) => {
         });
       }
 
+      const parsed = parseCloudinaryUrl(audioUrl);
+      const audioMetadata = parsed ? {
+        url: audioUrl,
+        publicId: parsed.publicId,
+        fileName: "audio.webm",
+        fileSize: 0,
+        mimeType: "audio/webm",
+        resourceType: parsed.resourceType
+      } : {
+        url: audioUrl,
+        publicId: "unknown",
+        fileName: "audio.webm",
+        fileSize: 0,
+        mimeType: "audio/webm",
+        resourceType: "video"
+      };
+
       const newaudioMessage = new Message({
         sender: {
           userId: targetSenderId,
@@ -793,6 +841,7 @@ const initializeSocket = (server) => {
         },
         content: audioUrl,
         type: "audio",
+        fileUrl: audioMetadata,
       });
       await newaudioMessage.save();
       const receiverSockets = onlineUsers.get(targetReceiverId);

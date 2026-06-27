@@ -19,8 +19,12 @@ const uploadpostSchema = new mongoose.Schema({
         default: "draft"
     },
     imageUrl: {
-        type: String,
-        default: ""
+        url: { type: String, default: "" },
+        publicId: { type: String, default: "" },
+        fileName: { type: String, default: "" },
+        fileSize: { type: Number, default: null },
+        mimeType: { type: String, default: "" },
+        resourceType: { type: String, default: "" }
     },
     category: {
         type: String,
@@ -74,6 +78,28 @@ const uploadpostSchema = new mongoose.Schema({
     ]
 
 }, { timestamps: true });
+
+uploadpostSchema.set("toJSON", {
+  virtuals: true,
+  getters: true,
+  transform: (doc, ret) => {
+    if (ret.imageUrl && typeof ret.imageUrl === 'object' && ret.imageUrl.url) {
+      ret.imageUrl = ret.imageUrl.url;
+    }
+    return ret;
+  }
+});
+
+uploadpostSchema.set("toObject", {
+  virtuals: true,
+  getters: true,
+  transform: (doc, ret) => {
+    if (ret.imageUrl && typeof ret.imageUrl === 'object' && ret.imageUrl.url) {
+      ret.imageUrl = ret.imageUrl.url;
+    }
+    return ret;
+  }
+});
 
 const UploadPost = mongoose.model("UploadPost", uploadpostSchema);
 

@@ -106,22 +106,106 @@ app.get("/profileget", checkauthentication, async (req, res) => {
   res.json({ user });
 });
 
-app.get("/download/:filename", checkauthentication, (req, res) => {
+app.get("/download/:filename", checkauthentication, async (req, res, next) => {
   const fileName = req.params.filename;
   const originalName = req.query.name || fileName;
   const filePath = path.join(__dirname, "uploads", fileName);
+  
   console.log("FileName on disk:", fileName);
   console.log("OriginalName client:", originalName);
   console.log("FilePath target:", filePath);
 
-  res.download(filePath, originalName, (err) => {
-    if (err) {
-      console.error("Download error:", err);
-      if (!res.headersSent) {
-        res.status(404).json({ error: "File not found" });
+  const fs = require("fs");
+  if (fs.existsSync(filePath)) {
+    return res.download(filePath, originalName, (err) => {
+      if (err) {
+        console.error("Local download error:", err);
+        if (!res.headersSent) {
+          res.status(404).json({ error: "File not found" });
+        }
+      }
+    });
+  }
+
+  // Not found locally, find in Cloudinary by searching DB
+  try {
+    const https = require("https");
+    let fileUrl = "";
+
+    // Regex to match URL ending with the requested filename
+    const fileRegex = new RegExp(fileName + "$", "i");
+
+    // 1. Search Message attachment
+    const msg = await Message.findOne({
+      $or: [
+        { "fileUrl.url": fileRegex },
+        { fileUrl: fileRegex },
+        { content: fileRegex }
+      ]
+    });
+
+    if (msg) {
+      fileUrl = msg.fileUrl && typeof msg.fileUrl === 'object' ? msg.fileUrl.url : msg.fileUrl || msg.content;
+    }
+
+    // 2. Search UserProfile picture
+    if (!fileUrl) {
+      const profile = await UserProfile.findOne({
+        $or: [
+          { "profilePicture.url": fileRegex },
+          { profilePicture: fileRegex }
+        ]
+      });
+      if (profile) {
+        fileUrl = profile.profilePicture && typeof profile.profilePicture === 'object' ? profile.profilePicture.url : profile.profilePicture;
       }
     }
-  });
+
+    // 3. Search UploadPost image
+    if (!fileUrl) {
+      const post = await UploadPost.findOne({
+        $or: [
+          { "imageUrl.url": fileRegex },
+          { imageUrl: fileRegex }
+        ]
+      });
+      if (post) {
+        fileUrl = post.imageUrl && typeof post.imageUrl === 'object' ? post.imageUrl.url : post.imageUrl;
+      }
+    }
+
+    if (!fileUrl) {
+      console.warn("File URL not found in DB for filename:", fileName);
+      return res.status(404).json({ error: "File not found" });
+    }
+
+    console.log("Streaming file from Cloudinary:", fileUrl);
+    
+    // Stream from Cloudinary
+    res.setHeader("Content-Disposition", `attachment; filename="${encodeURIComponent(originalName)}"`);
+    https.get(fileUrl, (cloudinaryRes) => {
+      if (cloudinaryRes.statusCode !== 200) {
+        console.error("Cloudinary returned status:", cloudinaryRes.statusCode);
+        return res.status(cloudinaryRes.statusCode).json({ error: "Storage file download failed" });
+      }
+
+      if (cloudinaryRes.headers["content-type"]) {
+        res.setHeader("Content-Type", cloudinaryRes.headers["content-type"]);
+      }
+      if (cloudinaryRes.headers["content-length"]) {
+        res.setHeader("Content-Length", cloudinaryRes.headers["content-length"]);
+      }
+
+      cloudinaryRes.pipe(res);
+    }).on("error", (err) => {
+      console.error("Cloudinary stream request error:", err);
+      res.status(500).json({ error: "Failed to download file from storage" });
+    });
+
+  } catch (err) {
+    console.error("DB download lookup error:", err);
+    res.status(500).json({ error: "Server error" });
+  }
 });
 
 app.post("/setprofile", checkauthentication, uploadProfilePicture, setprofile);
@@ -395,5 +479,31 @@ if (require.main === module) {
       process.exit(1);
     });
 }
+
+// Centralized Error Handling Middleware (handles Multer & General errors)
+app.use((err, req, res, next) => {
+  console.error("Centralized Error Handler:", err);
+
+  const multer = require("multer");
+  if (err instanceof multer.MulterError) {
+    return res.status(400).json({
+      success: false,
+      message: `Upload error: ${err.message}`,
+      code: err.code
+    });
+  }
+
+  if (err.message && (err.message.includes("allowed") || err.message.includes("type"))) {
+    return res.status(400).json({
+      success: false,
+      message: err.message
+    });
+  }
+
+  res.status(err.status || 500).json({
+    success: false,
+    message: err.message || "Internal server error"
+  });
+});
 
 module.exports = app;

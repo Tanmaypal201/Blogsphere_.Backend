@@ -1,5 +1,6 @@
 const UserProfile = require("../models/userprofile");
 const Update = require("../models/updates");
+const { uploadToCloudinary, deleteFromCloudinary } = require("../service/cloudnary");
 //Controller for setting user profile
 const setprofile = async (req, res) => {
   try {
@@ -16,7 +17,21 @@ const setprofile = async (req, res) => {
       return res.status(400).json({ error: "Required fields missing" });
     }
 
-    const profilePicture = req.file ? `/uploads/${req.file.filename}` : null;
+    let profilePicture = null;
+    if (req.file) {
+      const uploadResult = await uploadToCloudinary(req.file.path, {
+        folder: "blogsphere/profile-images",
+      });
+      profilePicture = {
+        url: uploadResult.url,
+        publicId: uploadResult.publicId,
+        fileName: req.file.originalname,
+        fileSize: req.file.size,
+        mimeType: req.file.mimetype,
+        resourceType: uploadResult.resourceType,
+      };
+    }
+
     const interestsArray = Array.isArray(interests)
       ? interests
       : interests.split(",").map((i) => i.trim());
@@ -30,8 +45,22 @@ const setprofile = async (req, res) => {
     if (existingProfile) {
       existingProfile.fullName = fullName;
       existingProfile.bio = bio;
-      existingProfile.profilePicture =
-        profilePicture || existingProfile.profilePicture;
+      
+      if (profilePicture) {
+        // Delete old profile picture from Cloudinary if it exists
+        if (existingProfile.profilePicture && existingProfile.profilePicture.publicId) {
+          try {
+            await deleteFromCloudinary(
+              existingProfile.profilePicture.publicId,
+              existingProfile.profilePicture.resourceType || "image"
+            );
+          } catch (deleteErr) {
+            console.error("Failed to delete old profile picture from Cloudinary:", deleteErr);
+          }
+        }
+        existingProfile.profilePicture = profilePicture;
+      }
+
       existingProfile.interests = interestsArray;
 
       await existingProfile.save();
@@ -47,7 +76,7 @@ const setprofile = async (req, res) => {
       username: req.user.username,
       fullName,
       bio,
-      profilePicture,
+      profilePicture: profilePicture || { url: "" },
       interests: interestsArray,
     });
 

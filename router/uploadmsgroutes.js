@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const { uploadImageinmessage, uploadVideoInMessage, uploadDocumentInMessage } = require("../middleware/uploadfile");
-const uploadFileInMessageController = require("../controller/uploadinmsg");
+const { uploadFileInMessageController } = require("../controller/uploadinmsg");
 const checkauthentication = require("../middleware/auth");
 
 router.post("/uploadimageinmessage", checkauthentication, uploadImageinmessage, uploadFileInMessageController);

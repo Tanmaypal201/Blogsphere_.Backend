@@ -72,10 +72,12 @@ const getUpdates = async (req, res) => {
 
       const actorProfile = actorId ? profileMap.get(actorId) : null;
       const actorUsername = actorProfile?.username || "Someone";
-      const profilePicUrl = actorProfile?.profilePicture ? 
-        (actorProfile.profilePicture.startsWith('http') ? 
-          actorProfile.profilePicture : 
-          `http://localhost:3001${actorProfile.profilePicture}`) : 
+      const rawProfilePic = actorProfile?.profilePicture;
+      const profilePicStr = rawProfilePic && typeof rawProfilePic === 'object' ? rawProfilePic.url : rawProfilePic;
+      const profilePicUrl = profilePicStr ? 
+        (profilePicStr.startsWith('http') ? 
+          profilePicStr : 
+          `http://localhost:3001${profilePicStr}`) : 
         "";
 
       return {

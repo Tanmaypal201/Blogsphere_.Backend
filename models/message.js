@@ -70,8 +70,12 @@ const messageSchema = new mongoose.Schema({
         required: true
     },
     fileUrl: {
-        type: String,
-        default: ""
+        url: { type: String, default: "" },
+        publicId: { type: String, default: "" },
+        fileName: { type: String, default: "" },
+        fileSize: { type: Number, default: null },
+        mimeType: { type: String, default: "" },
+        resourceType: { type: String, default: "" }
     },
     fileName: {
         type: String,
@@ -91,6 +95,28 @@ const messageSchema = new mongoose.Schema({
     }
 
 }, { timestamps: true })
+
+messageSchema.set("toJSON", {
+  virtuals: true,
+  getters: true,
+  transform: (doc, ret) => {
+    if (ret.fileUrl && typeof ret.fileUrl === 'object' && ret.fileUrl.url) {
+      ret.fileUrl = ret.fileUrl.url;
+    }
+    return ret;
+  }
+});
+
+messageSchema.set("toObject", {
+  virtuals: true,
+  getters: true,
+  transform: (doc, ret) => {
+    if (ret.fileUrl && typeof ret.fileUrl === 'object' && ret.fileUrl.url) {
+      ret.fileUrl = ret.fileUrl.url;
+    }
+    return ret;
+  }
+});
 
 const Message = mongoose.model("Message", messageSchema);
 module.exports = Message;

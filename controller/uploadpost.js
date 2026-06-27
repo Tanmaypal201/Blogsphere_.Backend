@@ -1,16 +1,32 @@
 const UploadPost = require("../models/uploadpost");
 const Update = require("../models/updates"); // Correct: updates.js (plural)
-const { uploadonCloudnary } = require("../service/cloudnary");
+const { uploadToCloudinary } = require("../service/cloudnary");
 
 const createPost = async (req, res) => {
   try {
     const { title, content, status, category, tags } = req.body;
     const userId = req.user._id;
-    const uploadresult = await uploadonCloudnary(req.file.path);
+
+    if (!req.file) {
+      return res.status(400).json({ error: "Post image is required" });
+    }
+
+    const uploadresult = await uploadToCloudinary(req.file.path, {
+      folder: "blogsphere/post-images"
+    });
+
     if (!uploadresult) {
       return res.status(500).json({ error: "Failed to upload image to Cloudinary" });
     }
-    const imageUrl = uploadresult.url;
+
+    const imageUrl = {
+      url: uploadresult.url,
+      publicId: uploadresult.publicId,
+      fileName: req.file.originalname,
+      fileSize: req.file.size,
+      mimeType: req.file.mimetype,
+      resourceType: uploadresult.resourceType
+    };
     let parsedTags = [];
     if (tags) {
       if (Array.isArray(tags)) {
