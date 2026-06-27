@@ -220,6 +220,15 @@ app.get("/download/:filename", checkauthentication, async (req, res, next) => {
   }
 });
 
+const getFileUrl = (field) => {
+  if (!field) return "";
+  const url = typeof field === "object" ? field.url : field;
+  if (url && (url.startsWith("http://") || url.startsWith("https://"))) {
+    return `/uploads/${url}`;
+  }
+  return url || "";
+};
+
 app.post("/setprofile", checkauthentication, uploadProfilePicture, setprofile);
 app.post("/createpost", checkauthentication, uploadPostImage, createPost);
 app.post("/setsettings", checkauthentication, setsettings);
@@ -252,7 +261,7 @@ app.get("/getsavedposts", checkauthentication, async (req, res) => {
     const profileMap = {};
 
     profiles.forEach(profile => {
-      profileMap[profile.userId.toString()] = profile.profilePicture;
+      profileMap[profile.userId.toString()] = getFileUrl(profile.profilePicture);
     });
 
     const postsWithProfile = posts.map(post => ({
@@ -373,7 +382,7 @@ app.get("/getallposts", checkauthentication, async (req, res) => {
         });
         return {
           ...post.toObject(),
-          profilePicture: userProfile?.profilePicture || null,
+          profilePicture: getFileUrl(userProfile?.profilePicture) || null,
         };
       }),
     );
@@ -401,7 +410,7 @@ app.get("/getallusers", checkauthentication, async (req, res) => {
 
     const profileMap = {};
     profiles.forEach((profile) => {
-      profileMap[profile.userId.toString()] = profile.profilePicture;
+      profileMap[profile.userId.toString()] = getFileUrl(profile.profilePicture);
     });
 
     const usersWithProfilePics = await Promise.all(

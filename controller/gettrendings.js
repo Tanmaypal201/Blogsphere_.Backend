@@ -2,6 +2,15 @@ const UploadPost = require("../models/uploadpost");
 const User = require("../models/user");
 const UserProfile = require("../models/userprofile");
 
+const getFileUrl = (field) => {
+  if (!field) return "";
+  const url = typeof field === "object" ? field.url : field;
+  if (url && (url.startsWith("http://") || url.startsWith("https://"))) {
+    return `/uploads/${url}`;
+  }
+  return url || "";
+};
+
 const getTrendingPosts = async (req, res) => {
     try {
         console.log("Trendings !!")
@@ -99,7 +108,7 @@ const getTopAuthors = async (req, res) => {
                 ...author,
                 userId: profile?.userId || author.userId,
                 username: profile?.username || author.username,
-                profilePicture: profile?.profilePicture || ''
+                profilePicture: getFileUrl(profile?.profilePicture)
             };
         });
         console.log("Authors with profile", authorsWithProfile);
