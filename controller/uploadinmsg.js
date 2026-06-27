@@ -7,15 +7,7 @@ const uploadFileInMessageController = async (req, res) => {
     if (!req.file) {
       return res.status(400).json({
         success: false,
-        message: "No file uploaded"
-      });
-    }
-
-    const { senderId, receiverId } = req.body;
-    if (!senderId || !receiverId) {
-      return res.status(400).json({
-        success: false,
-        message: "Sender ID and Receiver ID are required"
+        message: "No file uploaded",
       });
     }
 
@@ -45,38 +37,12 @@ const uploadFileInMessageController = async (req, res) => {
     if (!uploadResult) {
       return res.status(500).json({
         success: false,
-        message: "Failed to upload file to Cloudinary"
+        message: "Failed to upload file to Cloudinary",
       });
     }
 
-    const sender = await User.findById(senderId);
-    const receiver = await User.findById(receiverId);
-
-    const newMessage = await Message.create({
-      sender: {
-        userId: senderId,
-        username: sender?.username || "Unknown"
-      },
-      receiver: {
-        userId: receiverId,
-        username: receiver?.username || "Unknown"
-      },
-      content: req.file.originalname || "Sent a file",
-      type,
-      fileName: req.file.originalname,
-      fileUrl: {
-        url: uploadResult.url,
-        publicId: uploadResult.publicId,
-        fileName: req.file.originalname,
-        fileSize: req.file.size,
-        mimeType: req.file.mimetype,
-        resourceType: uploadResult.resourceType
-      },
-      fileSize: req.file.size,
-      status: "sent"
-    });
-
     return res.status(200).json({
+      success: true,
       message: "File uploaded successfully",
       fileUrl: uploadResult.url,
       type: type,
@@ -88,7 +54,7 @@ const uploadFileInMessageController = async (req, res) => {
     console.error("Chat file upload error:", error);
     res.status(500).json({
       success: false,
-      message: error.message
+      message: error.message,
     });
   }
 };
