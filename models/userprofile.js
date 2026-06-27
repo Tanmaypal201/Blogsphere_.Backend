@@ -41,9 +41,11 @@ userProfileSchema.set("toJSON", {
     if (ret.profilePicture) {
       const url = typeof ret.profilePicture === "object" ? ret.profilePicture.url : ret.profilePicture;
       if (url && (url.startsWith("http://") || url.startsWith("https://"))) {
-        ret.profilePicture = `/uploads/${url}`;
-      } else {
         ret.profilePicture = url;
+      } else if (url && url.startsWith("/")) {
+        ret.profilePicture = `${process.env.NEXT_PUBLIC_API_URL}${url}`;
+      } else if (url) {
+        ret.profilePicture = `${process.env.NEXT_PUBLIC_API_URL}/${url}`;
       }
     }
     return ret;

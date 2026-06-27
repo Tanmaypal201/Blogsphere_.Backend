@@ -99,16 +99,18 @@ const messageSchema = new mongoose.Schema({
 messageSchema.set("toJSON", {
   virtuals: true,
   getters: true,
-  transform: (doc, ret) => {
-    if (ret.imageUrl) {
-      const url = typeof ret.imageUrl === "object" ? ret.imageUrl.url : ret.imageUrl;
-      if (url && (url.startsWith("http://") || url.startsWith("https://"))) {
-        ret.imageUrl = `/uploads/${url}`;
-      } else {
-        ret.imageUrl = url;
+    transform: (doc, ret) => {
+      if (ret.fileUrl) {
+        const url = typeof ret.fileUrl === "object" ? ret.fileUrl.url : ret.fileUrl;
+        if (url && (url.startsWith("http://") || url.startsWith("https://"))) {
+          ret.fileUrl = url;
+        } else if (url && url.startsWith("/")) {
+          ret.fileUrl = `${process.env.NEXT_PUBLIC_API_URL}${url}`;
+        } else if (url) {
+          ret.fileUrl = `${process.env.NEXT_PUBLIC_API_URL}/${url}`;
+        }
       }
-    }
-    return ret;
+      return ret;
   }
 });
 
@@ -116,12 +118,12 @@ messageSchema.set("toObject", {
   virtuals: true,
   getters: true,
   transform: (doc, ret) => {
-    if (ret.imageUrl) {
-      const url = typeof ret.imageUrl === "object" ? ret.imageUrl.url : ret.imageUrl;
+    if (ret.fileUrl) {
+      const url = typeof ret.fileUrl === "object" ? ret.fileUrl.url : ret.fileUrl;
       if (url && (url.startsWith("http://") || url.startsWith("https://"))) {
-        ret.imageUrl = `/uploads/${url}`;
-      } else {
-        ret.imageUrl = url;
+        ret.fileUrl = url;
+      } else if (url) {
+        ret.fileUrl = `${process.env.NEXT_PUBLIC_API_URL}/${url}`;
       }
     }
     return ret;
