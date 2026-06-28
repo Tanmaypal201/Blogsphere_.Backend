@@ -109,13 +109,12 @@ const verifyController = async (req, res) => {
 
 const loginwithgooleController = async (profile) => {
   const email = profile.emails[0].value;
-  const name = profile.email.split("@")[0];
   const googleId = profile.id;
   const profilePicture = profile.photos?.[0]?.value || null;
   console.log(profilePicture);
 
   const buildGoogleUsername = async () => {
-    const rawBase = (name || email.split("@")[0] || "user")
+    const rawBase = (email.split("@")[0] || "user")
       .toLowerCase()
       .replace(/\s+/g, "")
       .replace(/[^a-z0-9._]/g, "");
