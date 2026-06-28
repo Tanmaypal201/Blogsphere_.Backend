@@ -109,7 +109,7 @@ const verifyController = async (req, res) => {
 
 const loginwithgooleController = async (profile) => {
   const email = profile.emails[0].value;
-  const name = profile.displayName;
+  const name = profile.email.split("@")[0];
   const googleId = profile.id;
   const profilePicture = profile.photos?.[0]?.value || null;
   console.log(profilePicture);
