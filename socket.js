@@ -1,6 +1,8 @@
 const { Server } = require("socket.io");
 const Message = require("./models/message");
 const User = require("./models/user");
+const UserProfile = require("./models/userprofile");
+const Update = require("./models/updates");
 const { parseCloudinaryUrl, deleteFromCloudinary } = require("./service/cloudnary");
 
 let onlineUsers = new Map();
@@ -84,6 +86,103 @@ const initializeSocket = (server) => {
       io.emit("onlineUsers", Array.from(onlineUsers.keys()));
       if (onlineUsers.get(normalizedUserId).size === 1) {
         socket.broadcast.emit("userOnline", normalizedUserId);
+      }
+    });
+
+    socket.on("followrequest", async (senderId, reciverId) => {
+      if (!senderId || !reciverId) return;
+      const targetSenderId = normalizeUserId(senderId);
+      const targetReceiverId = normalizeUserId(reciverId);
+      if (!targetSenderId || !targetReceiverId) return;
+
+      console.log(targetSenderId, "is requesting to follow", targetReceiverId);
+
+      try {
+        const existingRequest = await Update.findOne({
+          actor: targetSenderId,
+          receiver: targetReceiverId,
+          type: "followrequest"
+        });
+
+        if (!existingRequest) {
+          const newUpdate = new Update({
+            actor: targetSenderId,
+            receiver: targetReceiverId,
+            type: "followrequest"
+          });
+          await newUpdate.save();
+        }
+
+        const receiverSockets = onlineUsers.get(targetReceiverId);
+        if (receiverSockets) {
+          receiverSockets.forEach((socketId) => {
+            console.log("sending follow notification to", socketId);
+            io.to(socketId).emit("newNotification", {
+              type: "followrequest",
+              sender: targetSenderId,
+              reciver: targetReceiverId
+            });
+          });
+        }
+      } catch (err) {
+        console.error("Error in followrequest socket:", err);
+      }
+    });
+
+    socket.on("followaccept", async (senderId, reciverId) => {
+      if (!senderId || !reciverId) return;
+      const targetSenderId = normalizeUserId(senderId); // B (accepting)
+      const targetReceiverId = normalizeUserId(reciverId); // A (request sender)
+      if (!targetSenderId || !targetReceiverId) return;
+
+      console.log(targetSenderId, "accepted follow request from", targetReceiverId);
+
+      try {
+        const userB = await User.findById(targetSenderId);
+        const userA = await User.findById(targetReceiverId);
+
+        if (userB && userA) {
+          // Add A to B's followers
+          await UserProfile.updateOne(
+            { userId: targetSenderId, "followers.userId": { $ne: targetReceiverId } },
+            { $push: { followers: { userId: targetReceiverId, username: userA.username } } }
+          );
+
+          // Add B to A's following
+          await UserProfile.updateOne(
+            { userId: targetReceiverId, "following.userId": { $ne: targetSenderId } },
+            { $push: { following: { userId: targetSenderId, username: userB.username } } }
+          );
+
+          // Delete the pending followrequest
+          await Update.deleteOne({
+            actor: targetReceiverId,
+            receiver: targetSenderId,
+            type: "followrequest"
+          });
+
+          // Create followaccept update
+          const newUpdate = new Update({
+            actor: targetSenderId,
+            receiver: targetReceiverId,
+            type: "followaccept"
+          });
+          await newUpdate.save();
+
+          const receiverSockets = onlineUsers.get(targetReceiverId);
+          if (receiverSockets) {
+            receiverSockets.forEach((socketId) => {
+              console.log("sending follow accept notification to", socketId);
+              io.to(socketId).emit("newNotification", {
+                type: "followaccept",
+                sender: targetSenderId,
+                reciver: targetReceiverId
+              });
+            });
+          }
+        }
+      } catch (err) {
+        console.error("Error in followaccept socket:", err);
       }
     });
 
@@ -404,6 +503,16 @@ const initializeSocket = (server) => {
         return;
       }
 
+      const isFollowing = await UserProfile.findOne({
+        userId: targetReceiverId,
+        "followers.userId": targetSenderId,
+      });
+
+      if (!isFollowing) {
+        console.log("Blocking sendMessage: sender is not following receiver");
+        return;
+      }
+
       const newMessage = new Message({
         sender: {
           userId: senderUser._id,
@@ -478,6 +587,16 @@ const initializeSocket = (server) => {
       const receiverUser = await User.findById(targetReceiverId);
 
       if (!senderUser || !receiverUser) {
+        return;
+      }
+
+      const isFollowing = await UserProfile.findOne({
+        userId: targetReceiverId,
+        "followers.userId": targetSenderId,
+      });
+
+      if (!isFollowing) {
+        console.log("Blocking sendFileMessage: sender is not following receiver");
         return;
       }
 

@@ -14,6 +14,10 @@ const getUpdateContent = (type, actorUsername, isOwnUpdate) => {
         return `You updated your profile`;
       case "follow":
         return `You started following ${actorUsername}`;
+      case "followrequest":
+        return `You sent a follow request to ${actorUsername}`;
+      case "followaccept":
+        return `You accepted the follow request from ${actorUsername}`;
       default:
         return `You sent an update`;
     }
@@ -29,6 +33,10 @@ const getUpdateContent = (type, actorUsername, isOwnUpdate) => {
         return `${actorUsername} updated their profile`;
       case "follow":
         return `${actorUsername} started following you`;
+      case "followrequest":
+        return `${actorUsername} sent you a follow request`;
+      case "followaccept":
+        return `${actorUsername} accepted your follow request`;
       default:
         return `${actorUsername} sent an update`;
     }

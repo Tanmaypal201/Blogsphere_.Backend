@@ -22,6 +22,7 @@ const { setprofile } = require("./controller/userprofile");
 const User = require("./models/user");
 const UserProfile = require("./models/userprofile");
 const UploadPost = require("./models/uploadpost");
+const Update = require("./models/updates");
 const path = require("path");
 const {
   uploadProfilePicture,
@@ -293,10 +294,18 @@ app.post("/getfollowingposts", checkauthentication, async (req, res) => {
     const { followers, following } = await UserProfile.findOne({
       userId: targetUserId,
     }).select("following followers");
+
+    const pendingRequest = await Update.findOne({
+      actor: req.user._id,
+      receiver: targetUserId,
+      type: "followrequest"
+    });
+
     res.status(200).json({
       followers: followers,
       following: following,
       posts: postofuser.length,
+      isRequested: !!pendingRequest,
     });
   } catch (err) {
     res.status(500).json({ error: "Server error" });
@@ -452,7 +461,13 @@ app.get("/messages/:userId", checkauthentication, async (req, res) => {
         { "sender.userId": receiverUserId, "receiver.userId": senderuserId },
       ],
     }).sort({ createdAt: 1 });
-    res.json({ messages });
+
+    const isFollowing = await UserProfile.findOne({
+      userId: receiverUserId,
+      "followers.userId": senderuserId,
+    });
+
+    res.json({ messages, isFollowing: !!isFollowing });
   } catch (err) {
     res.status(500).json({ error: "Server error" });
   }

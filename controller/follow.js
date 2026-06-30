@@ -20,12 +20,14 @@ const followUser = async (req, res) => {
             return res.status(400).json({ error: "You cannot follow yourself" });
         }
 
+        // Check if already following
         const alreadyFollower = await UserProfile.findOne({
             userId,
             "followers.userId": req.user._id,
         });
 
         if (alreadyFollower) {
+            // Unfollow logic
             await UserProfile.updateOne(
                 { userId },
                 { $pull: { followers: { userId: req.user._id } } },
@@ -39,7 +41,7 @@ const followUser = async (req, res) => {
             await Update.deleteMany({
                 actor: req.user._id,
                 receiver: userId,
-                type: "follow",
+                type: { $in: ["follow", "followrequest", "followaccept"] },
             });
 
             return res.status(200).json({
@@ -48,26 +50,34 @@ const followUser = async (req, res) => {
             });
         }
 
-        await UserProfile.updateOne(
-            { userId },
-            { $push: { followers: { userId: req.user._id, username: req.user.username } } },
-        );
+        // Check if there is a pending follow request
+        const pendingRequest = await Update.findOne({
+            actor: req.user._id,
+            receiver: userId,
+            type: "followrequest",
+        });
 
-        await UserProfile.updateOne(
-            { userId: req.user._id },
-            { $push: { following: { userId, username } } },
-        );
+        if (pendingRequest) {
+            // Cancel the follow request
+            await Update.deleteOne({ _id: pendingRequest._id });
 
+            return res.status(200).json({
+                action: "requested_cancelled",
+                message: "Follow request cancelled",
+            });
+        }
+
+        // Send a follow request
         await new Update({
             actor: req.user._id,
             receiver: userId,
-            type: "follow",
+            type: "followrequest",
         }).save();
 
         return res.status(200).json({
-            action: "followed",
-            message: "User followed successfully",
-            followMessage: `You started following ${username}`,
+            action: "requested",
+            message: "Follow request sent successfully",
+            followMessage: `Follow request sent to ${username}`,
         });
     } catch (err) {
         return res.status(500).json({ error: "Server error" });
