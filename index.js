@@ -390,7 +390,7 @@ app.post("/getuserwhomfollowes", checkauthentication, async (req, res) => {
     const users = await User.find({
       _id: { $ne: id },
       isVerified: true,
-      followers: { $in: [id] }
+      "followers.userId": id
     }).select("_id username email");
 
     const profiles = await UserProfile.find({
