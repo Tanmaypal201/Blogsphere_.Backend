@@ -383,14 +383,16 @@ app.get("/getallposts", checkauthentication, async (req, res) => {
 
 app.post("/getuserwhomfollowes", checkauthentication, async (req, res) => {
   try {
-    const { id } = req.body;
+    const id = req.user._id;
     if (!id) {
       return res.status(400).json({ error: "User not authenticated" });
     }
+
+    const currentUser = await User.findById(id).select("following");
+    const followedIds = (currentUser?.following || []).map((f) => f.userId);
     const users = await User.find({
-      _id: { $ne: id },
+      _id: { $in: followedIds },
       isVerified: true,
-      "followers.userId": id
     }).select("_id username email");
 
     const profiles = await UserProfile.find({
