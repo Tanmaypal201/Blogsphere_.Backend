@@ -142,26 +142,20 @@ const initializeSocket = (server) => {
         const userA = await User.findById(targetReceiverId);
 
         if (userB && userA) {
-          // Add A to B's followers
           await UserProfile.updateOne(
             { userId: targetSenderId, "followers.userId": { $ne: targetReceiverId } },
             { $push: { followers: { userId: targetReceiverId, username: userA.username } } }
           );
-
-          // Add B to A's following
           await UserProfile.updateOne(
             { userId: targetReceiverId, "following.userId": { $ne: targetSenderId } },
             { $push: { following: { userId: targetSenderId, username: userB.username } } }
           );
-
-          // Delete the pending followrequest
           await Update.deleteOne({
             actor: targetReceiverId,
             receiver: targetSenderId,
             type: "followrequest"
           });
 
-          // Create followaccept update
           const newUpdate = new Update({
             actor: targetSenderId,
             receiver: targetReceiverId,

@@ -67,13 +67,11 @@ const getUpdates = async (req, res) => {
     );
 
     const currentUserId = req.user._id.toString();
-    
+
     const enrichedUpdates = updates.map((update) => {
       const actorId = update.actor?.toString();
       const receiverId = update.receiver?.toString();
       const isOwnUpdate = actorId === receiverId;
-      
-      // Filter: exclude likes/comments from self (these shouldn't exist but just in case)
       if ((update.type === "like" || update.type === "comment") && isOwnUpdate) {
         return null;
       }
@@ -82,10 +80,10 @@ const getUpdates = async (req, res) => {
       const actorUsername = actorProfile?.username || "Someone";
       const rawProfilePic = actorProfile?.profilePicture;
       const profilePicStr = rawProfilePic && typeof rawProfilePic === 'object' ? rawProfilePic.url : rawProfilePic;
-      const profilePicUrl = profilePicStr ? 
-        (profilePicStr.startsWith('http') ? 
-          profilePicStr : 
-          `http://localhost:3001${profilePicStr}`) : 
+      const profilePicUrl = profilePicStr ?
+        (profilePicStr.startsWith('http') ?
+          profilePicStr :
+          `http://localhost:3001${profilePicStr}`) :
         "";
 
       return {

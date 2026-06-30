@@ -67,12 +67,17 @@ const followUser = async (req, res) => {
             });
         }
 
-        // Send a follow request
-        await new Update({
-            actor: req.user._id,
-            receiver: userId,
-            type: "followrequest",
-        }).save();
+        // Send a follow request (use findOneAndUpdate for idempotency)
+        try {
+            await new Update({
+                actor: req.user._id,
+                receiver: userId,
+                type: "followrequest",
+            }).save();
+        } catch (dupErr) {
+            // Already exists (race condition or duplicate) – treat as sent
+            if (dupErr.code !== 11000) throw dupErr;
+        }
 
         return res.status(200).json({
             action: "requested",
@@ -80,6 +85,7 @@ const followUser = async (req, res) => {
             followMessage: `Follow request sent to ${username}`,
         });
     } catch (err) {
+        console.error("Error in followUser:", err);
         return res.status(500).json({ error: "Server error" });
     }
 };
