@@ -22,6 +22,4 @@ const getuser = (token) => {
         return null;
     }
 }
-
-console.log('Auth module loaded - setuser:', typeof setuser, 'getuser:', typeof getuser);
 module.exports = { setuser, getuser };

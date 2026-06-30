@@ -122,11 +122,9 @@ app.get("/download/:filename", checkauthentication, async (req, res, next) => {
   const fileName = req.params.filename;
   const originalName = req.query.name || fileName;
   const filePath = path.join(__dirname, "uploads", fileName);
-  
   console.log("FileName on disk:", fileName);
   console.log("OriginalName client:", originalName);
   console.log("FilePath target:", filePath);
-
   const fs = require("fs");
   if (fs.existsSync(filePath)) {
     return res.download(filePath, originalName, (err) => {
@@ -138,16 +136,10 @@ app.get("/download/:filename", checkauthentication, async (req, res, next) => {
       }
     });
   }
-
-  // Not found locally, find in Cloudinary by searching DB
   try {
     const https = require("https");
     let fileUrl = "";
-
-    // Regex to match URL ending with the requested filename
     const fileRegex = new RegExp(fileName + "$", "i");
-
-    // 1. Search Message attachment
     const msg = await Message.findOne({
       $or: [
         { "fileUrl.url": fileRegex },
@@ -159,8 +151,6 @@ app.get("/download/:filename", checkauthentication, async (req, res, next) => {
     if (msg) {
       fileUrl = msg.fileUrl && typeof msg.fileUrl === 'object' ? msg.fileUrl.url : msg.fileUrl || msg.content;
     }
-
-    // 2. Search UserProfile picture
     if (!fileUrl) {
       const profile = await UserProfile.findOne({
         $or: [
@@ -172,8 +162,6 @@ app.get("/download/:filename", checkauthentication, async (req, res, next) => {
         fileUrl = profile.profilePicture && typeof profile.profilePicture === 'object' ? profile.profilePicture.url : profile.profilePicture;
       }
     }
-
-    // 3. Search UploadPost image
     if (!fileUrl) {
       const post = await UploadPost.findOne({
         $or: [
@@ -192,8 +180,6 @@ app.get("/download/:filename", checkauthentication, async (req, res, next) => {
     }
 
     console.log("Streaming file from Cloudinary:", fileUrl);
-    
-    // Stream from Cloudinary
     res.setHeader("Content-Disposition", `attachment; filename="${encodeURIComponent(originalName)}"`);
     https.get(fileUrl, (cloudinaryRes) => {
       if (cloudinaryRes.statusCode !== 200) {
@@ -223,11 +209,9 @@ app.get("/download/:filename", checkauthentication, async (req, res, next) => {
 const getFileUrl = (field) => {
   if (!field) return "";
   const url = typeof field === "object" ? field.url : field;
-  // If already an absolute URL, return it directly
   if (url && (url.startsWith("http://") || url.startsWith("https://"))) {
     return url;
   }
-  // Otherwise, assume it's a relative path stored in uploads directory
   return url ? `/uploads/${url}` : "";
 };
 
@@ -362,6 +346,7 @@ app.get("/getuserprofile/:id", checkauthentication, async (req, res) => {
     const profile = await UserProfile.findOne({ userId: id }).select(
       "-password",
     );
+
     if (!profile) {
       return res.status(404).json({ error: "User not found" });
     }
@@ -396,14 +381,16 @@ app.get("/getallposts", checkauthentication, async (req, res) => {
   }
 });
 
-app.get("/getallusers", checkauthentication, async (req, res) => {
+app.post("/getuserwhomfollowes", checkauthentication, async (req, res) => {
   try {
-    if (!req.user || !req.user._id) {
+    const { id } = req.body;
+    if (!id) {
       return res.status(400).json({ error: "User not authenticated" });
     }
     const users = await User.find({
-      _id: { $ne: req.user._id },
-      isVerified: true
+      _id: { $ne: id },
+      isVerified: true,
+      followers: { $in: [id] }
     }).select("_id username email");
 
     const profiles = await UserProfile.find({

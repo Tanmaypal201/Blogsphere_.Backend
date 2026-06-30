@@ -21,5 +21,4 @@ const updateschema = new mongoose.Schema({
 });
 
 const Update = mongoose.model("Update", updateschema);
-
 module.exports = Update;
