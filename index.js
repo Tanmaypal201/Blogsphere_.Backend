@@ -291,9 +291,11 @@ app.post("/getfollowingposts", checkauthentication, async (req, res) => {
     ).sort({
       createdAt: -1,
     });
-    const { followers, following } = await UserProfile.findOne({
-      userId: targetUserId,
-    }).select("following followers");
+
+    const userProfile = await UserProfile.findOne({ userId: targetUserId }).select("followers following");
+
+    const followers = userProfile?.followers || [];
+    const following = userProfile?.following || [];
 
     const pendingRequest = await Update.findOne({
       actor: req.user._id,
@@ -302,12 +304,13 @@ app.post("/getfollowingposts", checkauthentication, async (req, res) => {
     });
 
     res.status(200).json({
-      followers: followers,
-      following: following,
+      followers,
+      following,
       posts: postofuser.length,
       isRequested: !!pendingRequest,
     });
   } catch (err) {
+    console.error("Error in /getfollowingposts:", err);
     res.status(500).json({ error: "Server error" });
   }
 });
