@@ -346,7 +346,6 @@ app.get("/getuserprofile/:id", checkauthentication, async (req, res) => {
     const profile = await UserProfile.findOne({ userId: id }).select(
       "-password",
     );
-
     if (!profile) {
       return res.status(404).json({ error: "User not found" });
     }
@@ -381,18 +380,14 @@ app.get("/getallposts", checkauthentication, async (req, res) => {
   }
 });
 
-app.post("/getuserwhomfollowes", checkauthentication, async (req, res) => {
+app.get("/getallusers", checkauthentication, async (req, res) => {
   try {
-    const id = req.user._id;
-    if (!id) {
+    if (!req.user || !req.user._id) {
       return res.status(400).json({ error: "User not authenticated" });
     }
-
-    const currentUser = await User.findById(id).select("following");
-    const followedIds = (currentUser?.following || []).map((f) => f.userId);
     const users = await User.find({
-      _id: { $in: followedIds },
-      isVerified: true,
+      _id: { $ne: req.user._id },
+      isVerified: true
     }).select("_id username email");
 
     const profiles = await UserProfile.find({
