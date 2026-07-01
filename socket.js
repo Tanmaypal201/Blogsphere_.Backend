@@ -4,8 +4,8 @@ const User = require("./models/user");
 const UserProfile = require("./models/userprofile");
 const Update = require("./models/updates");
 const { parseCloudinaryUrl, deleteFromCloudinary } = require("./service/cloudnary");
-
 let onlineUsers = new Map();
+
 
 const isValidObjectId = (id) => {
   return typeof id === "string" && id.length === 24 && /^[0-9a-fA-F]{24}$/.test(id);
@@ -1061,4 +1061,4 @@ const initializeSocket = (server) => {
   return io;
 };
 
-module.exports = { initializeSocket };
+module.exports = { initializeSocket, onlineUsers };

@@ -40,14 +40,12 @@ const { followUser } = require("./controller/follow");
 const Article = require("./models/articles");
 const http = require("http");
 
+
 // Socket.io: only initialize when running as a regular Node server (not Vercel serverless)
 const server = http.createServer(app);
-try {
-  const { initializeSocket } = require("./socket");
-  initializeSocket(server);
-} catch (e) {
-  console.warn("Socket.io initialization skipped:", e.message);
-}
+const { initializeSocket, onlineUsers } = require("./socket");
+const io = initializeSocket(server);
+app.set("io", io);
 
 app.use(cors({
   origin: process.env.FRONTEND_URL,
@@ -532,3 +530,4 @@ app.use((err, req, res, next) => {
 });
 
 module.exports = app;
+module.exports = { initializeSocket };
