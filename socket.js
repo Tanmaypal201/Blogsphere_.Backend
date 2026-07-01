@@ -39,6 +39,28 @@ const getUnreadMessageCount = async (receiverId) => {
   return unreadSenders.length;
 };
 
+const ensureUserProfile = async (userDoc) => {
+  if (!userDoc) {
+    return null;
+  }
+
+  const existingProfile = await UserProfile.findOne({ userId: userDoc._id });
+  if (existingProfile) {
+    return existingProfile;
+  }
+
+  return UserProfile.create({
+    userId: userDoc._id,
+    username: userDoc.username,
+    fullName: "",
+    bio: "",
+    profilePicture: { url: "" },
+    interests: [],
+    followers: [],
+    following: [],
+  });
+};
+
 const initializeSocket = (server) => {
   const io = new Server(server, {
     cors: {
@@ -130,6 +152,10 @@ const initializeSocket = (server) => {
     });
 
     socket.on("followaccept", async (senderId, reciverId) => {
+      if (senderId && typeof senderId === "object") {
+        reciverId = senderId.receiverId;
+        senderId = senderId.senderId;
+      }
       if (!senderId || !reciverId) return;
       const targetSenderId = normalizeUserId(senderId); // B (accepting)
       const targetReceiverId = normalizeUserId(reciverId); // A (request sender)
@@ -142,13 +168,16 @@ const initializeSocket = (server) => {
         const userA = await User.findById(targetReceiverId);
 
         if (userB && userA) {
+          await ensureUserProfile(userB);
+          await ensureUserProfile(userA);
+
           await UserProfile.updateOne(
-            { userId: targetSenderId, "followers.userId": { $ne: targetReceiverId } },
-            { $push: { followers: { userId: targetReceiverId, username: userA.username } } }
+            { userId: targetSenderId },
+            { $addToSet: { followers: { userId: targetReceiverId, username: userA.username } } }
           );
           await UserProfile.updateOne(
-            { userId: targetReceiverId, "following.userId": { $ne: targetSenderId } },
-            { $push: { following: { userId: targetSenderId, username: userB.username } } }
+            { userId: targetReceiverId },
+            { $addToSet: { following: { userId: targetSenderId, username: userB.username } } }
           );
           await Update.deleteOne({
             actor: targetReceiverId,
